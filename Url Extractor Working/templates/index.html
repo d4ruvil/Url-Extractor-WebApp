@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>URL Extractor & Status Checker</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <style>
+        /* Loader Styling */
+        #loader {
+            display: none;
+            text-align: center;
+            margin-top: 20px;
+        }
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-top: 4px solid #007bff;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .btn-info {
+            background-color: #17a2b8;
+            border-color: #17a2b8;
+        }
+        .btn-info:hover {
+            background-color: #138496;
+            border-color: #117a8b;
+        }
+        /* Drag & Drop Styling */
+        .drop-zone {
+            border: 2px dashed #007bff;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            margin-bottom: 20px;
+        }
+        .drop-zone.dragover {
+            background-color: #f0f8ff;
+        }
+        /* Progress Bar Styling */
+        .progress {
+            height: 20px;
+            margin-top: 20px;
+            background-color: #e9ecef;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        .progress-bar {
+            background-color: #007bff;
+            transition: width 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: bold;
+            color: #fff;
+        }
+        /* Dark Mode Styling */
+        body.dark-mode {
+            background-color: #121212;
+            color: #ffffff;
+        }
+        body.dark-mode .form-control {
+            background-color: #333333;
+            color: #ffffff;
+        }
+        body.dark-mode .drop-zone {
+            border-color: #ffffff;
+        }
+    </style>
+</head>
+<body class="container mt-5">
+
+    <h2 class="text-center">Upload a File to Extract URLs & Check Status</h2>
+
+    <!-- Dark Mode Toggle -->
+    <div class="text-end mb-3">
+        <button id="darkModeToggle" class="btn btn-secondary">Toggle Dark Mode</button>
+    </div>
+
+    <!-- Drag & Drop Zone -->
+    <div id="dropZone" class="drop-zone">
+        <p>Drag & Drop files here or <strong>click to upload</strong></p>
+        <input type="file" id="fileInput" multiple style="display: none;">
+    </div>
+
+    <!-- Progress Bar -->
+    <div id="progressBar" class="progress" style="display: none;">
+        <div id="progress" class="progress-bar" role="progressbar" style="width: 0%;">0%</div>
+    </div>
+
+    <!-- Loader Animation -->
+    <div id="loader">
+        <div class="spinner"></div>
+        <p>Processing, please wait...</p>
+    </div>
+
+    <div id="outputSection" class="mt-4" style="display: none;">
+        <h4>Extracted URLs (All):</h4>
+        <textarea id="urlOutput" class="form-control" rows="5" readonly></textarea>
+        <button onclick="copyToClipboard('urlOutput')" class="btn btn-secondary mt-2">Copy</button>
+        <button onclick="downloadTextFile('urlOutput', 'urls_all.txt')" class="btn btn-warning mt-2">Download as TXT</button>
+        <button onclick="downloadCSV('urlOutput', 'urls_all.csv')" class="btn btn-info mt-2">Download as CSV</button>
+        <button onclick="downloadJSON('urlOutput', 'urls_all.json')" class="btn btn-info mt-2">Download as JSON</button>
+
+        <h4 class="mt-4">Extracted URLs (Unique):</h4>
+        <textarea id="uniqueUrlOutput" class="form-control" rows="5" readonly></textarea>
+        <button onclick="copyToClipboard('uniqueUrlOutput')" class="btn btn-secondary mt-2">Copy</button>
+        <button onclick="downloadTextFile('uniqueUrlOutput', 'urls_unique.txt')" class="btn btn-warning mt-2">Download as TXT</button>
+        <button onclick="downloadCSV('uniqueUrlOutput', 'urls_unique.csv')" class="btn btn-info mt-2">Download as CSV</button>
+        <button onclick="downloadJSON('uniqueUrlOutput', 'urls_unique.json')" class="btn btn-info mt-2">Download as JSON</button>
+
+        <h3 class="mt-4">URL Status Codes:</h3>
+
+        <div class="row">
+            <div class="col-md-6">
+                <h5>✅ 200 (Success)</h5>
+                <textarea id="status200" class="form-control" rows="4" readonly></textarea>
+                <button onclick="copyToClipboard('status200')" class="btn btn-secondary mt-2">Copy</button>
+                <button onclick="downloadTextFile('status200', 'status_200.txt')" class="btn btn-warning mt-2">Download as TXT</button>
+                <button onclick="downloadCSV('status200', 'status_200.csv')" class="btn btn-info mt-2">Download as CSV</button>
+                <button onclick="downloadJSON('status200', 'status_200.json')" class="btn btn-info mt-2">Download as JSON</button>
+            </div>
+            <div class="col-md-6">
+                <h5>🔁 301/302 (Redirects)</h5>
+                <textarea id="status301_302" class="form-control" rows="4" readonly></textarea>
+                <button onclick="copyToClipboard('status301_302')" class="btn btn-secondary mt-2">Copy</button>
+                <button onclick="downloadTextFile('status301_302', 'status_301_302.txt')" class="btn btn-warning mt-2">Download as TXT</button>
+                <button onclick="downloadCSV('status301_302', 'status_301_302.csv')" class="btn btn-info mt-2">Download as CSV</button>
+                <button onclick="downloadJSON('status301_302', 'status_301_302.json')" class="btn btn-info mt-2">Download as JSON</button>
+            </div>
+            <div class="col-md-6">
+                <h5>🚫 403 (Forbidden)</h5>
+                <textarea id="status403" class="form-control" rows="4" readonly></textarea>
+                <button onclick="copyToClipboard('status403')" class="btn btn-secondary mt-2">Copy</button>
+                <button onclick="downloadTextFile('status403', 'status_403.txt')" class="btn btn-warning mt-2">Download as TXT</button>
+                <button onclick="downloadCSV('status403', 'status_403.csv')" class="btn btn-info mt-2">Download as CSV</button>
+                <button onclick="downloadJSON('status403', 'status_403.json')" class="btn btn-info mt-2">Download as JSON</button>
+            </div>
+            <div class="col-md-6">
+                <h5>❌ 404 (Not Found)</h5>
+                <textarea id="status404" class="form-control" rows="4" readonly></textarea>
+                <button onclick="copyToClipboard('status404')" class="btn btn-secondary mt-2">Copy</button>
+                <button onclick="downloadTextFile('status404', 'status_404.txt')" class="btn btn-warning mt-2">Download as TXT</button>
+                <button onclick="downloadCSV('status404', 'status_404.csv')" class="btn btn-info mt-2">Download as CSV</button>
+                <button onclick="downloadJSON('status404', 'status_404.json')" class="btn btn-info mt-2">Download as JSON</button>
+            </div>
+            <div class="col-md-6">
+                <h5>🔥 500+ (Server Errors)</h5>
+                <textarea id="status500" class="form-control" rows="4" readonly></textarea>
+                <button onclick="copyToClipboard('status500')" class="btn btn-secondary mt-2">Copy</button>
+                <button onclick="downloadTextFile('status500', 'status_500.txt')" class="btn btn-warning mt-2">Download as TXT</button>
+                <button onclick="downloadCSV('status500', 'status_500.csv')" class="btn btn-info mt-2">Download as CSV</button>
+                <button onclick="downloadJSON('status500', 'status_500.json')" class="btn btn-info mt-2">Download as JSON</button>
+            </div>
+            <div class="col-md-6">
+                <h5>⚠️ Errors (Unreachable URLs)</h5>
+                <textarea id="statusError" class="form-control" rows="4" readonly></textarea>
+                <button onclick="copyToClipboard('statusError')" class="btn btn-secondary mt-2">Copy</button>
+                <button onclick="downloadTextFile('statusError', 'status_errors.txt')" class="btn btn-warning mt-2">Download as TXT</button>
+                <button onclick="downloadCSV('statusError', 'status_errors.csv')" class="btn btn-info mt-2">Download as CSV</button>
+                <button onclick="downloadJSON('statusError', 'status_errors.json')" class="btn btn-info mt-2">Download as JSON</button>
+            </div>
+        </div>
+
+        <button id="copyAllBtn" class="btn btn-success mt-2">Copy All</button>
+    </div>
+
+    <script>
+        let data = {}; // Store the fetched data globally
+
+        // Drag & Drop Functionality
+        const dropZone = document.getElementById("dropZone");
+        const fileInput = document.getElementById("fileInput");
+
+        dropZone.addEventListener("click", () => fileInput.click());
+        fileInput.addEventListener("change", (e) => handleFiles(e.target.files));
+
+        dropZone.addEventListener("dragover", (e) => {
+            e.preventDefault();
+            dropZone.classList.add("dragover");
+        });
+
+        dropZone.addEventListener("dragleave", () => {
+            dropZone.classList.remove("dragover");
+        });
+
+        dropZone.addEventListener("drop", (e) => {
+            e.preventDefault();
+            dropZone.classList.remove("dragover");
+            handleFiles(e.dataTransfer.files);
+        });
+
+        function handleFiles(files) {
+            if (files.length > 0) {
+                uploadFiles(files);
+            }
+        }
+
+        // Upload Files Functionality
+        function uploadFiles(files) {
+            const formData = new FormData();
+            for (const file of files) {
+                formData.append("files", file);
+            }
+
+            // Show progress bar & hide output section
+            document.getElementById("progressBar").style.display = "block";
+            document.getElementById("loader").style.display = "none";
+            document.getElementById("outputSection").style.display = "none";
+
+            const xhr = new XMLHttpRequest();
+            xhr.open("POST", "/extract", true);
+
+            // Update progress bar
+            xhr.upload.onprogress = (e) => {
+                if (e.lengthComputable) {
+                    const percentComplete = (e.loaded / e.total) * 100;
+                    document.getElementById("progress").style.width = percentComplete + "%";
+                    document.getElementById("progress").innerText = Math.round(percentComplete) + "%";
+                }
+            };
+
+            xhr.onload = () => {
+                if (xhr.status === 200) {
+                    const responseData = JSON.parse(xhr.responseText);
+                    if (responseData.error) {
+                        alert(responseData.error);
+                        return;
+                    }
+
+                    // Update the UI with the fetched data
+                    document.getElementById("urlOutput").value = responseData.urls.join("\n");
+                    document.getElementById("uniqueUrlOutput").value = responseData.unique_urls.join("\n");
+
+                    document.getElementById("status200").value = responseData.status_results["200"].join("\n");
+                    document.getElementById("status301_302").value = responseData.status_results["301_302"].join("\n");
+                    document.getElementById("status403").value = responseData.status_results["403"].join("\n");
+                    document.getElementById("status404").value = responseData.status_results["404"].join("\n");
+                    document.getElementById("status500").value = responseData.status_results["500+"].join("\n");
+                    document.getElementById("statusError").value = responseData.status_results["error"].join("\n");
+
+                    // Store CSV and JSON data for download
+                    data = responseData;
+
+                    // Hide progress bar & show output
+                    document.getElementById("progressBar").style.display = "none";
+                    document.getElementById("outputSection").style.display = "block";
+                } else {
+                    alert("An error occurred while processing the file.");
+                }
+            };
+
+            xhr.send(formData);
+        }
+
+        // Dark Mode Toggle
+        const darkModeToggle = document.getElementById("darkModeToggle");
+        darkModeToggle.addEventListener("click", () => {
+            document.body.classList.toggle("dark-mode");
+        });
+
+        // Copy, Download, and Progress Bar Functions
+        function copyToClipboard(elementId) {
+            let textarea = document.getElementById(elementId);
+            textarea.select();
+            document.execCommand("copy");
+            alert("Copied to clipboard!");
+        }
+
+        function downloadTextFile(elementId, fileName) {
+            let text = document.getElementById(elementId).value;
+            let blob = new Blob([text], { type: "text/plain" });
+            let a = document.createElement("a");
+            a.href = URL.createObjectURL(blob);
+            a.download = fileName;
+            a.click();
+        }
+
+        function downloadCSV(elementId, fileName) {
+            let text = document.getElementById(elementId).value;
+            let csvData = "data:text/csv;charset=utf-8," + encodeURIComponent(text);
+            let a = document.createElement("a");
+            a.href = csvData;
+            a.download = fileName;
+            a.click();
+        }
+
+        function downloadJSON(elementId, fileName) {
+            let text = document.getElementById(elementId).value;
+            let jsonData = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(text.split("\n")));
+            let a = document.createElement("a");
+            a.href = jsonData;
+            a.download = fileName;
+            a.click();
+        }
+    </script>
+
+</body>
+</html>
